@@ -69,6 +69,7 @@ public class VideoFragment extends Fragment {
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         videoV.setVideoURI(urivideo);
+        videoV.start();
     }
 
     @Override

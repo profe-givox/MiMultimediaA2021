@@ -52,7 +52,7 @@ public class AudioFragment extends Fragment {
             public void onClick(View view) {
                 if(btnPlay.getText().toString().equals("Detener")){
                     mediaPlayer.stop();mediaPlayer.release();
-                    btnRecord.setText("Reproducir");
+                    btnPlay.setText("Reproducir");
                     return;
                 }
 

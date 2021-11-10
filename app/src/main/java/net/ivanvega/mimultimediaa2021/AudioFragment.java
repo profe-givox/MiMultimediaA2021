@@ -1,7 +1,12 @@
 package net.ivanvega.mimultimediaa2021;
 
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.lifecycle.ViewModelProvider;
 
+import android.Manifest;
+import android.content.Context;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.os.Build;
@@ -12,6 +17,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import android.os.Environment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,6 +25,7 @@ import android.widget.Button;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 
 public class AudioFragment extends Fragment {
 
@@ -28,10 +35,46 @@ public class AudioFragment extends Fragment {
 
     private AudioViewModel mViewModel;
     private File audioFile;
+    private ActivityResultLauncher<String[]> launcherPermis;
+
+    // Requesting permission to RECORD_AUDIO
+    private boolean permissionToRecordAccepted = false;
+    private String [] permissions = {Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE};
+    private Boolean permissionToWriteAccepted= false;
+
+
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        launcherPermis = registerForActivityResult(
+                new ActivityResultContracts.RequestMultiplePermissions(), new ActivityResultCallback<Map<String, Boolean>>() {
+                    @Override
+                    public void onActivityResult(Map<String, Boolean> result) {
+
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                            result.forEach((s, aBoolean) -> {
+                                Log.i("PERMISOS CALLBACK", s + String.valueOf(aBoolean));
+                            });
+                        }
+                        permissionToRecordAccepted = result.get(permissions[0]);
+                        permissionToWriteAccepted = result.get(permissions[1]);
+                        btnRecord.setEnabled(permissionToRecordAccepted);
+                        btnPlay.setEnabled(permissionToWriteAccepted);
+                    }
+                });
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+    }
 
     public static AudioFragment newInstance() {
         return new AudioFragment();
     }
+    
+    
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
@@ -74,13 +117,19 @@ public class AudioFragment extends Fragment {
 
 
         btnRecord.setOnClickListener(view -> {
+
+
+
             if(btnRecord.getText().toString().equals("Detener")){
                 mediaRecorder.stop();mediaRecorder.release();
                 btnRecord.setText("Grabar");
                 return;
             }
 
-            audioFile = new File(getActivity().getFilesDir(), "miaudio.mp3");
+            //audioFile = new File(getActivity().getFilesDir(), "miaudio.mp3");
+            audioFile = new File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+                    , "miaudiochilakil.mp3");
 
             mediaRecorder = new MediaRecorder();
             mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
@@ -98,8 +147,6 @@ public class AudioFragment extends Fragment {
 
             btnRecord.setText("Detener");
 
-
-
             /*
             recorder.stop();
             recorder.reset();   // You can reuse the object by going back to setAudioSource() step
@@ -108,6 +155,9 @@ public class AudioFragment extends Fragment {
              */
 
         });
+
+
+        launcherPermis.launch(permissions);
 
         return layout;
 

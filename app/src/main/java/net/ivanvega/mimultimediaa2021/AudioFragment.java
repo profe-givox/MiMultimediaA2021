@@ -6,9 +6,13 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.lifecycle.ViewModelProvider;
 
 import android.Manifest;
+import android.content.ContentUris;
 import android.content.Context;
+import android.content.Intent;
+import android.database.Cursor;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 
@@ -17,15 +21,20 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class AudioFragment extends Fragment {
 
@@ -36,12 +45,16 @@ public class AudioFragment extends Fragment {
     private AudioViewModel mViewModel;
     private File audioFile;
     private ActivityResultLauncher<String[]> launcherPermis;
+    private ActivityResultLauncher<String[]> launcherSAF ;
+
 
     // Requesting permission to RECORD_AUDIO
     private boolean permissionToRecordAccepted = false;
     private String [] permissions = {Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE};
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.READ_EXTERNAL_STORAGE };
     private Boolean permissionToWriteAccepted= false;
+    private View btnMulLis;
 
 
     @Override
@@ -63,6 +76,14 @@ public class AudioFragment extends Fragment {
                         btnPlay.setEnabled(permissionToWriteAccepted);
                     }
                 });
+
+        launcherSAF = registerForActivityResult(
+                new ActivityResultContracts.OpenDocument(),
+                result -> {
+                    Log.d("TESTOpenD", result.toString());
+                }
+
+        );
     }
 
     @Override
@@ -85,11 +106,19 @@ public class AudioFragment extends Fragment {
 
         btnRecord = layout.findViewById(R.id.btnGrabar);
         btnPlay = layout.findViewById(R.id.btnReproducir);
+        Button btnSAF = layout.findViewById(R.id.btnSAF);
+
+        btnSAF.setOnClickListener(view -> {
+            launcherSAF.launch(new String[]{"application/pdf",
+                    "application/msword",
+                    "application/ms-doc",
+                    "application/doc",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    "text/plain"});
+        });
 
         //
         //File rutaExternaCompartida = Environment.getExternalStorageDirectory();
-
-
         btnPlay.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -113,9 +142,6 @@ public class AudioFragment extends Fragment {
                 }
             }
         });
-
-
-
         btnRecord.setOnClickListener(view -> {
 
 
@@ -156,11 +182,71 @@ public class AudioFragment extends Fragment {
 
         });
 
+        btnMulLis = layout.findViewById(R.id.btnMulti);
+        btnMulLis.setOnClickListener(view -> listarMultimedia() );
 
         launcherPermis.launch(permissions);
 
         return layout;
 
+
+    }
+
+    List<Video> videoList = new ArrayList<Video>();
+
+    private void listarMultimedia() {
+
+        String[] projection = new String[] {
+                MediaStore.Video.Media._ID,
+                MediaStore.Video.Media.DISPLAY_NAME,
+                MediaStore.Video.Media.DURATION,
+                MediaStore.Video.Media.SIZE
+        };
+        String selection = MediaStore.Video.Media.DURATION +
+                " >= ?";
+        String[] selectionArgs = new String[] {
+                String.valueOf(TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES))
+        };
+
+        String sortOrder = MediaStore.Video.Media.DISPLAY_NAME + " ASC";
+
+        try (Cursor cursor = getActivity().getContentResolver().query(
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                sortOrder
+        )) {
+            // Cache column indices.
+            int idColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID);
+            int nameColumn =
+                    cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME);
+            int durationColumn =
+                    cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION);
+            int sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE);
+
+            while (cursor.moveToNext()) {
+                // Get values of columns for a given video.
+                long id = cursor.getLong(idColumn);
+                String name = cursor.getString(nameColumn);
+                int duration = cursor.getInt(durationColumn);
+                int size = cursor.getInt(sizeColumn);
+
+                Uri contentUri = ContentUris.withAppendedId(
+                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id);
+
+                // Stores column values and the contentUri in a local object
+                // that represents the media file.
+                videoList.add(new Video(contentUri, name, duration, size));
+            }
+            Toast.makeText(getActivity(), ""+ videoList.size(),
+                    Toast.LENGTH_LONG).show();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                videoList.forEach(video -> {
+                    Log.i("Video1Minuto", video.toString());
+                });
+            }
+        }
 
     }
 

@@ -81,6 +81,8 @@ public class AudioFragment extends Fragment {
                 new ActivityResultContracts.OpenDocument(),
                 result -> {
                     Log.d("TESTOpenD", result.toString());
+                    Toast.makeText(getActivity(),
+                            result.toString(), Toast.LENGTH_LONG).show();
                 }
 
         );
@@ -114,7 +116,9 @@ public class AudioFragment extends Fragment {
                     "application/ms-doc",
                     "application/doc",
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    "text/plain"});
+                    "text/plain",
+                    "image/*"
+            });
         });
 
         //
